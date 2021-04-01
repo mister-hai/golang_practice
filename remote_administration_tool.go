@@ -16,8 +16,14 @@ package main
 
 // import the libraries we need
 import (
-	"crypto/sha256"
+	"color"
 	"bufio"
+	"crypto"
+	"crypto/sha256"
+	"crypto/sha512"
+	"io"
+	"io/ioutil"
+	"encoding/json"
 	"fmt"
 	"net"
 	"os"
@@ -29,11 +35,29 @@ import (
 var local_tcpaddr_LAN net.TCPAddr
 var local_tcpaddr_WAN net.TCPAddr
 
-/* function to hash a string to compare against the hardcoded password
-// never hardcode a password in plaintext
-// we use the strongest we can and a good password...
-//
-// For the putposes of this tutorial, we use a weak password.
+//Admin Password in an obvious place
+// TODO: set these for "hardmode" section
+var sha256_admin_pass_preencrypted sha256 = "1cbec737f863e4922cee63cc2ebbfaafcd1cff8b790d8cfd2e6a5d550b648afa"
+var sha512_admin_pass_preencrypted sha512;
+
+// Horribly insecure implementation
+var sha256_admin_pass_insecure sha256 = sha256.Sum256([]byte("admin"))
+
+// struct to represent an OS command from the wire
+// we will be shoving a JSON payload into this
+type Command struct {
+	Task_id int
+	command_string  string
+	info_message    string
+	success_message string
+	failure_message string
+}
+/* 
+function to hash a string to compare against the hardcoded password
+ never hardcode a password in plaintext
+ we use the strongest we can and a good password...
+
+ For the putposes of this tutorial, we use a weak password.
 */
 func hash_auth_check(password string) {
 	//Various Hashes, in order of increasing security
@@ -45,8 +69,20 @@ func hash_auth_check(password string) {
 	sha256_password_hash := sha256.Sum256([]byte(password))
 }
 // the obvious, a plaintext password, hardcoded
-func insecure_password_check(){
+func insecure_password_check(password string){
 
+}
+// function to get the hash of a file for integrity checking
+func file_hash(path string){
+	// read the file from path
+	file_input, error := ioutil.ReadFile(path)
+	// create hash instance
+	file_hash := sha256.New()
+	// compute hash , if error, log error
+	if _, err := io.Copy(file_hash, input); err != nil {
+    	log.Fatal(err)
+	}
+	sum := hash.Sum(nil)
 }
 // function to provide outbound connections via threading
 func tcp_outbound(laddr net.TCPAddr,
@@ -56,7 +92,6 @@ func tcp_outbound(laddr net.TCPAddr,
 	// a connection
 	// and an error
 	connection, error := net.DialTCP("tcp", &laddr, &raddr)
-
 	//generic error printing
 	// if error isnt empty/null/nothingness
 	if error != nil {
@@ -67,7 +102,7 @@ func tcp_outbound(laddr net.TCPAddr,
 	// if there was no error, continue to the control loop
 	// will be basis of control flow
 	for {
-		netData, error := bufio.NewReader(c).ReadString('\n')
+		netData, error := bufio.NewReader(connection).ReadString('\n')
 		
 		if error != nil {
 			fmt.Println(error)
