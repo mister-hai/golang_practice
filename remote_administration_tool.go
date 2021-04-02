@@ -1,29 +1,78 @@
-/*
+/******************************************************************************
  This is a Remote Administration Tool
-	AKA: RAT
+    AKA: RAT
 
-	written in Golang
+    written in Golang
 
-	As a practice in learning Golang
+    As a practice in learning Golang
 
-	And as a tutorial for "the Church Of The Subhacker" Wiki
+    And as a tutorial for "the Church Of The Subhacker" Wiki
 
-	This tutorial assumes some familiarity with programming concepts, languages, and networking
+    This tutorial assumes some familiarity with programming concepts, languages,
+	 and networking
+=================================================================
+	KNOWN GOOD DEBIAN VM CONFIGURATION:
+		Project Folder Structure
+			mkdir ~/Desktop/go_practice
+			mkdir ~/Desktop/go_practice/src/
+			touch ~/Desktop/go_practice/src/go_practice
+
+		Install the recomended go extension in VSCode
+			- ctrl+shift+p - type in "Go : install tools"
+			- select all the check boxes
+
+		~/.bashrc:
+			export GOPATH=/home/user/Desktop/go_practice
+			export GOROOT=/home/user/go
+			export GOMODCACHE=/home/user/Desktop/go_practice/src
+			export PATH=$GOROOT:$GOPATH/bin:$PATH:/home/user/.local/bin:/home/user/go/bin
+
+		settings.json in VSCODE:
+
+	{
+    	"window.zoomLevel": 2,
+    	"workbench.editorAssociations": [
+        	{
+            	"viewType": "jupyter.notebook.ipynb",
+            	"filenamePattern": "*.ipynb"
+        	}
+    	],
+    	"go.goroot": "/home/moop/go",
+    	"go.installDependenciesWhenBuilding": true,
+    	"go.buildOnSave": "workspace",
+    	"go.formatTool": "gofmt",
+    	"go.languageServerFlags": [
+        	"-rpc.trace"
+      	]
+	}
+
+	Open the terminal in VSCode and type in
+		- go mod init go_practice
+
+	THINGS SHOULD WORK DO USE THE SUSPEND/SAVE STATE FUNCTION
+	YOU WILL BREAK THE INSTALL (at least I did)
+
+	... Careful changing the formatter to "gofmt" it hung my VM
 */
 
 // make our module
-package main
+package go_practice
 
 // import the libraries we need
 import (
 	"bufio"
 	"crypto"
 	"fmt"
+
+	"github.com/fatih/color"
+
+	//"image/color"
 	"io"
-	"io/ioutil"
 	"log"
 	"net"
+	"os"
 	"strings"
+	//@v1.10.0"
 )
 
 // declaring global variables to share our
@@ -54,6 +103,11 @@ type Command struct {
 	failure_message string
 }
 
+// Colorized error printing to see what we are doing
+func error_printer(error_object error, message string) {
+	color.Red(error_object, message)
+}
+
 /*
 function to hash a string to compare against the hardcoded password
  never hardcode a password in plaintext
@@ -61,6 +115,7 @@ function to hash a string to compare against the hardcoded password
 
  For the porpoises of this tutorial, we use a weak password.
 */
+
 func hash_auth_check(password string) {
 	//Various Hashes, in order of increasing security
 	// dont use this
@@ -79,31 +134,38 @@ func insecure_password_check(password string) {
 
 }
 
-// function to get the hash of a file for integrity checking
+/*/
+function to get the hash of a file for integrity checking
+	create hash instance
+		- this is a memory address we are going to shove a file into
+	read the file from path
+		- handle error if necessary
+		- generic error printing
+/*/
 func file_hash(path string) {
-	// read the file from path
-	file_input, error := ioutil.ReadFile(path)
-	//generic error printing
-	// if error isnt empty/null/nothingness
+	file_hash := crypto.SHA256.New()
+	file_input, error := os.Open(path)
 	if error != nil {
 		// print the error
 		fmt.Println(error)
 		return
 	}
-	file_bytes, error := io.Reader.Read(file_input)
-	// create hash instance
-	file_hash := crypto.SHA256.New()
-	// copy file buffer to hash compute buffer
-	// if error, log error
-	// the underscore character "_" is called a "blank identifier"
-	// it allows you to ignore left side values
-	// in this case, we are acting like the regular return value doesnt exist
-	// and if there is an error, log that error and exit
+	//close file when done reading
+	defer file.Close()
+
+	/*/
+	     copy file buffer to hash compute buffer
+		 the underscore character "_" is called a "blank identifier"
+		 it allows you to ignore left side values
+		 in this case, we are acting like the regular return value doesnt exist
+		 and if there is an error, log that error and exit
+		 otherwise, finish copying from buffer to buffer
+	    /*/
 	if _, error := io.Copy(file_hash, file_input); error != nil {
 		log.Fatal(error)
 	}
-
-	sum := hash.Sum(nil)
+	// and compute the hash of the file you provided to this function
+	file_hash_sha256 := file_hash.Sum(nil)
 }
 
 // function to provide outbound connections via threading
@@ -120,6 +182,7 @@ func tcp_outbound(laddr net.TCPAddr, raddr net.TCPAddr, port int8) {
 		fmt.Println(error)
 		return
 	}
+
 	// if there was no error, continue to the control loop
 	// will be basis of control flow
 	for {
